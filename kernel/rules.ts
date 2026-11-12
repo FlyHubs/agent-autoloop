@@ -21,7 +21,8 @@ type RuleOptions = RuleWords & {
   title?: string;
   parallel?: number;
   maxActive?: number;
-  resume?: boolean;
+  /** Go on in the thread's last session; a number is how many rounds one session takes before the next starts anew. */
+  resume?: boolean | number;
   emits?: EventFilter;
 };
 /** Without channels a rule's cards reach the default ones, or every channel if there are none; with them, only those. */

@@ -19,7 +19,8 @@ function details(rule: Rule, rules: Rules, now: number) {
   if (rule.parallel) parts.push(`并发 ${rule.parallel}`);
   if (rule.maxActive) parts.push(`本规则最多同时 ${rule.maxActive} 轮`);
   if (rule.channels?.length) parts.push(`只发 ${rule.channels.join("、")}`);
-  if (rule.resume) parts.push("接着上一轮的会话");
+  if (rule.resume === true) parts.push("接着上一轮的会话");
+  else if (rule.resume) parts.push(`接着上一轮的会话，一个会话最多 ${rule.resume} 轮`);
   if (rule.title) parts.push(`会话标题 ${rule.title}`);
   if (rule.group !== rule.name) parts.push(`组 ${rule.group}`);
   if (rule.tell !== "needed") parts.push(`通知 ${rule.tell}`);

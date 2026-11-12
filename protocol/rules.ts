@@ -87,7 +87,12 @@ function checkRule(issues: string[], rules: Rules, rule: Rule, names: Set<string
     ["group", isText, NOT_EMPTY, true],
     ["parallel", isCount, "要是正整数", true],
     ["maxActive", isCount, "要是正整数", true],
-    ["resume", (value) => typeof value === "boolean", "只能是 true 或 false", true],
+    [
+      "resume",
+      (value) => typeof value === "boolean" || isCount(value),
+      "只能是 true、false，或一个会话最多跑几轮（正整数）",
+      true,
+    ],
     ["tell", (value) => TELLS.includes(value as string), `只能是 ${TELLS.join("、")}`, true],
     ["emits", isObject, "要是一个对象", true],
     ["channels", isSomeWords, "要是通道编号的列表", true],

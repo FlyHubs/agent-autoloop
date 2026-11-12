@@ -13,7 +13,8 @@
 // a task elsewhere that can't say which model its app runs it on, so a client showing it borrows the Agent's, or one that says so with an empty word.
 // A good file changing on disk takes effect; a bad one doesn't, and says why. A file that is gone or can't be read
 // crashes the hub, at reload or at restart, instead of keeping the rules it had. A file broken while the hub was down
-// is never told, because nothing about it changes after startup has read it.
+// is never told, because nothing about it changes after startup has read it. A number of rounds for a rule's sessions
+// that isn't a count, like 0, is taken without a word, to mean whatever the hub's arithmetic makes of it.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -132,6 +133,9 @@ test("a mistake says which rule and what is wrong", () => {
   problem((r) => {
     r.rules[0].resume = "thread";
   }, /规则「意见」.*resume/);
+  problem((r) => {
+    r.rules[0].resume = 0;
+  }, /规则「意见」.*resume.*正整数/);
   problem((r) => {
     r.rules[0].title = "";
   }, /规则「意见」.*title/);

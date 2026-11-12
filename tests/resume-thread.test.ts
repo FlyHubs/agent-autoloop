@@ -5,6 +5,9 @@
 // a round that is or may still be running has its session opened by a second process, by a new event, an answer or a due
 // check; one such round stops its thread resuming for ever; a session that keeps failing is gone back into by each new event,
 // ten tries each, though the card said it would start over; a due check hands the previous agent's session to a new agent.
+// A rule that says how many rounds a session takes goes on in it past that many, so a session never ends however long it
+// grows; or tells the rounds by the session's name, which an agent may change each time it goes on, and never counts to
+// the end; or holds an answer to the count, so the answer starts over in a session that never heard the question.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -15,19 +18,21 @@ import { invariants } from "../sim/invariants.ts";
 
 const env = { secret: "resume", publicUrl: "https://hub.test" };
 const given = JSON.parse(readFileSync(new URL("./rules.fixture.json", import.meta.url), "utf8"));
-const rules = parseRules(
-  JSON.stringify({
-    ...given,
-    rules: given.rules
-      .filter((rule: { when: { source?: string } }) => rule.when.source)
-      .map((rule: { name: string }) => (rule.name === "意见" ? { ...rule, resume: true } : rule)),
-  }),
-  0,
-  "UTC",
-);
+const rulesWith = (resume: boolean | number) =>
+  parseRules(
+    JSON.stringify({
+      ...given,
+      rules: given.rules
+        .filter((rule: { when: { source?: string } }) => rule.when.source)
+        .map((rule: { name: string }) => (rule.name === "意见" ? { ...rule, resume } : rule)),
+    }),
+    0,
+    "UTC",
+  );
+const rules = rulesWith(true);
 const MINUTE = 60_000;
 
-function hub() {
+function hub(its = rules) {
   let view = empty();
   let now = Date.UTC(2026, 10, 5, 0, 0, 0);
   const log: Fact[] = [];
@@ -37,7 +42,7 @@ function hub() {
     view = evolve(view, decided.facts);
     return decided.value;
   };
-  act("rules", rules);
+  act("rules", its);
   let events = 0;
   const message = (subject = "#1") => act("ingest", "app", { id: `e${++events}`, type: "feedback.new", subject });
   let claims = 0;
@@ -323,5 +328,32 @@ test("a round the owner stopped starts its thread over too", () => {
   assert.equal(it.run(stopped.run).state, "cancelled");
   assert.equal(it.round("T").session, null);
   assert.equal(it.round("U").session, "T");
+  it.check();
+});
+
+test("a rule that says how many rounds a session takes starts a new one after that many", () => {
+  const it = hub(rulesWith(3));
+  assert.equal(it.round("S").session, null);
+  assert.equal(it.round("S").session, "S");
+  // An agent may give the session it went on in another name: it's that session's third round all the same.
+  assert.equal(it.round("T").session, "S");
+  assert.equal(it.round("U").session, null, "the fourth starts over");
+  assert.equal(it.round("U").session, "U", "and the thread goes on from there");
+  it.check();
+});
+
+test("an answer goes back to the session it was asked in, though that session has had its rounds", () => {
+  const it = hub(rulesWith(2));
+  it.round("S");
+  it.message();
+  const asking = it.claim();
+  assert.equal(asking.session, "S");
+  const ask = [{ title: "选哪个", text: "x", options: ["甲", "乙"] }];
+  it.act("finish", asking.run, asking.token, { outcome: "done", session: "S", ask });
+  it.act("answer", it.cards().find((card) => card.kind === "ask")!.id, { choice: 0 });
+  const answered = it.claim();
+  assert.equal(answered.session, "S");
+  it.act("finish", answered.run, answered.token, { outcome: "done", session: "S" });
+  assert.equal(it.round("T").session, null, "the next event starts over");
   it.check();
 });

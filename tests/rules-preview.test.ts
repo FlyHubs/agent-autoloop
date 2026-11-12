@@ -1,6 +1,7 @@
 // Failure modes: explain prints a rule's private prompt; a dry run writes to the hub instead of previewing; the
 // preview ignores another rule for the same event; a bad subcommand is accepted silently; a dry run with another source's key
-// previews this machine's source instead.
+// previews this machine's source instead. Explain says a rule goes on in a session but not how many rounds it gives one,
+// so a rule whose sessions come to an end reads the same as one whose never do.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -75,6 +76,10 @@ test("explain says which rules go on in the last round's session", () => {
     lines.some((line) => line.includes("feedback.*") && line.includes("接着上一轮的会话")),
     lines.join("\n"),
   );
+  assert.ok(!lines.join("\n").includes("一个会话最多"), "no end to a session unless the rule gives one");
+  given.rules[0].resume = 20;
+  const counted = explainRules(JSON.stringify(given), at(0), "UTC").join("\n");
+  assert.ok(counted.includes("接着上一轮的会话，一个会话最多 20 轮"), counted);
 });
 
 test("a dry run says which rules would take the event, and doesn't need a hub", () => {
