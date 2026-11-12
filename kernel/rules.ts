@@ -6,6 +6,7 @@ type AgentOptions = {
   model?: string;
   effort?: string;
   tier?: string;
+  allow?: string[];
   command?: string[];
   program?: string;
   timeout?: number;

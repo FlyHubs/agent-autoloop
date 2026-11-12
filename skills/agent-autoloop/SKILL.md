@@ -67,6 +67,8 @@ description: 配置 Agent 自动化中台：加规则、接新的事件插件、
 
 `access` 默认 `edit`，专用插件翻译成对应 CLI 的权限；`command` 只传参数，不替任意程序限制权限，按该 CLI 文档配置。要完整权限、不审批的话写 `full`，先和用户说清楚。
 
+Claude Code 在 `edit` 档跑不了没放行的命令。活里要跑测试、提交时，在 Agent 上写 `"allow": ["Bash(npm test *)", "Bash(git commit *)"]` 逐条放行，写法照 Claude Code 的权限规则，不要为此改成 `full`。放行的操作不再审批，范围按最小的写：`Bash(git *)` 连推送也放行了。别的内置插件不用这个字段。
+
 内置的 Claude Code、Codex、DeepSeek Harness 要走第三方网关、代理，或者启动前要先设好环境变量：写一个小脚本，设好变量再 `exec claude "$@"`（Codex、DSH 照此换成 `codex`、`dsh`），Agent 里写 `"program": "脚本的绝对路径"`。插件照旧解析输出、续接会话、统计用量，只是启动的是这个脚本；不用改成 `use: "command"`。令牌放在脚本读的文件里，不写进 `rules.json`。接单程序启动 Agent 前会去掉继承来的 `CLAUDE_CODE_*` 变量，要用的写在脚本里。`agent-autoloop doctor` 也用这个脚本检查登录。脚本能读到 `AGENT_AUTOLOOP_RUN`（第几轮）和 `AGENT_AUTOLOOP_CONTEXT`（资料文件），比如按轮次准备工作目录再 `cd` 进去。
 
 ```json
@@ -79,7 +81,7 @@ Windows 的 `cwd` 可写 `C:/code/project`、JSON 转义后的 `C:\\code\\projec
 
 一轮最长跑多久写 `timeout`，单位是分钟，默认 180。
 
-ACP 用 `use: "acp"` 和 `command: ["ACP 服务程序"]`，比如 Gemini CLI 是 `["gemini", "--acp"]`、OpenCode 是 `["opencode", "acp"]`，支持 v1 的会话新建、恢复、文字与一次性权限请求；先在该 Agent 自己的 CLI 登录。`access` 只管 Agent 主动来问的操作，规范允许它不询问就执行，要限制得用它自己的模式（比如 `command` 里写 `env INITIAL_AGENT_MODE=read-only …`）；`model`、`effort`、`tier` 不生效，要在 Agent 自己那边设置。普通命令接法与实测支持范围见 README。
+ACP 用 `use: "acp"` 和 `command: ["ACP 服务程序"]`，比如 Gemini CLI 是 `["gemini", "--acp"]`、OpenCode 是 `["opencode", "acp"]`，支持 v1 的会话新建、恢复、文字与一次性权限请求；先在该 Agent 自己的 CLI 登录。`access` 只管 Agent 主动来问的操作，规范允许它不询问就执行，要限制得用它自己的模式（比如 `command` 里写 `env INITIAL_AGENT_MODE=read-only …`）；`model`、`effort`、`tier`、`allow` 不生效，要在 Agent 自己那边设置。普通命令接法与实测支持范围见 README。
 
 DeepSeek Harness 用 `use: "dsh"`，要 0.2.2 或更新（`npm install -g @deepseek-ai/dsh@next --allow-scripts=koffi,node-pty,@deepseek-ai/dsh-subprocess-local`，不放行这三个包的安装脚本，装完一跑就出错），能续接原会话、上报 Token（不报费用），报 `MISSING_CREDENTIAL` 时把密钥放进环境变量，`access` 对应它的权限档位；旧版用 README 里的普通命令接法。没有可打开的桌面链接。
 

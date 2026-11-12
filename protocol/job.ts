@@ -12,6 +12,7 @@ export type Job = {
     effort?: string;
     tier?: string;
     access: string;
+    allow?: string[];
     command?: string[];
     program?: string;
     timeout?: number;

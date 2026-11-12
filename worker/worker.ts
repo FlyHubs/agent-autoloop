@@ -234,6 +234,7 @@ export function createWorker({
       effort: agent.effort,
       tier: agent.tier,
       access: agent.access as Turn["access"],
+      allow: agent.allow,
       command: agent.command,
       program: agent.program,
       contextFile: path.join(entry.dir, "context.json"),

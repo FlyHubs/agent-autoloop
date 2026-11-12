@@ -40,7 +40,8 @@ export function explainRules(text: string, now = Date.now(), zone = localZone())
     `Agent：${Object.entries(rules.agents)
       .map(([id, agent]) => {
         const limit = agent.maxActive ? `，最多同时 ${agent.maxActive} 轮` : "";
-        return `${id}（${agent.name}，${agent.worker}，权限 ${agent.access}${limit}）`;
+        const more = agent.allow ? `，另放行 ${agent.allow.join("、")}` : "";
+        return `${id}（${agent.name}，${agent.worker}，权限 ${agent.access}${more}${limit}）`;
       })
       .join("、")}`,
   ];

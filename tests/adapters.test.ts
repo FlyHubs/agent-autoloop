@@ -16,7 +16,9 @@
 // something other than what the event said. A built-in agent starts the program it finds, not the one its rules name,
 // so a wrapper that sends Claude Code to another service is never run. A service tier the rules name for Codex never
 // reaches its command line, so the run takes whatever tier the machine's own Codex config has that day. A program
-// missing for a moment, as while an update reinstalls it, stays missing until the worker restarts.
+// missing for a moment, as while an update reinstalls it, stays missing until the worker restarts. What the rules
+// allow an agent beyond its level of access never reaches Claude Code's command line, so a run that has to run the tests
+// or make a commit is refused there, and the only way left to let it is full access.
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -88,6 +90,16 @@ test("Claude Code: access, new and going on, model", { skip: !stubbed(claude, {}
   assert.ok(!again.includes("--session-id"));
   assert.ok(has(again, "--model", "m"));
   assert.ok(has(again, "--effort", "high"));
+});
+
+test("Claude Code: what its rules allow beyond its access goes on its command line, a flag to each", () => {
+  const allow = ["Bash(npm test *)", "Bash(git commit -m *)"];
+  const program = "/opt/bin/claude";
+  const allowed = (t: object) => claude.command({ ...turn, program, ...t }).filter((part) => /^--allowed/.test(part));
+  const flags = allow.map((rule) => `--allowedTools=${rule}`);
+  assert.deepEqual(allowed({ allow }), flags);
+  assert.deepEqual(allowed({ allow, resume: "old-id" }), flags, "going on in a session, too");
+  assert.deepEqual(allowed({}), [], "no more than its access unless the rules say");
 });
 
 test("Claude Code: reading its result", () => {

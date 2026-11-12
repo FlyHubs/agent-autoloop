@@ -39,6 +39,9 @@ export default {
     ...(turn.effort ? ["--effort", turn.effort] : []),
     "--permission-mode",
     PERMISSIONS[turn.access],
+    // With no one to ask, a turn at "edit" is refused every shell command the machine's own settings don't already
+    // allow. A flag to each rule with its value attached: so given they add up (2.1.322), and none is read as an option.
+    ...(turn.allow ?? []).map((rule) => `--allowedTools=${rule}`),
     "--add-dir",
     turn.folder,
     // Entering a worktree moves the whole transcript under the worktree's project folder (still so on 2.1.317): --resume

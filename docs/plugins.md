@@ -33,7 +33,7 @@ node --disable-warning=ExperimentalWarning --test --test-name-pattern='agent-aut
 | `link(session)`              | 可选，打开这个会话的链接。回执写错时，`read` 返回了 `session` 的插件都只重写回执，和有没有链接无关                            |
 | `check(program)`             | 可选，`doctor` 问它这个 Agent 现在能不能用：能用返回 `null`，否则返回下一步怎么做。参数是规则里给它写的 `program`，没写就不传 |
 
-`turn` 一定有的是 `prompt`、`session`、`resume`、`cwd`、`access`、`contextFile`、`folder`，另外五个只有规则里给这个 Agent 写了才有：`model`、`effort`、`tier`、`command`、`program`。`resume` 是这一轮要接回的原会话，新开一轮时是 `null`。`contextFile` 是资料文件，受限 CLI 需要允许读取 `folder`。`program` 是内置插件换成的启动程序，第三方插件用不上，收下也可以不理。`tier` 是服务档位，用的是那个 CLI 自己的叫法，现在只有内置的 Codex 插件用它（传成 `-c service_tier="…"`，`priority` 就是 Codex 应用里的 Fast），别的插件收下不理。那五个都按「可能没有」来读，内置插件就是这么写的：`...(turn.model ? ["--model", turn.model] : [])`、`turn.command ?? []`。`read` 要能处理未写完的输出；CLI 真正完成后才返回 `text`。`read` 抛错或什么也不返回时，还在跑的接着跑，结束后这一轮算没跑成，留在原会话重派。
+`turn` 一定有的是 `prompt`、`session`、`resume`、`cwd`、`access`、`contextFile`、`folder`，另外六个只有规则里给这个 Agent 写了才有：`model`、`effort`、`tier`、`allow`、`command`、`program`。`resume` 是这一轮要接回的原会话，新开一轮时是 `null`。`contextFile` 是资料文件，受限 CLI 需要允许读取 `folder`。`program` 是内置插件换成的启动程序，第三方插件用不上，收下也可以不理。`tier` 是服务档位，用的是那个 CLI 自己的叫法，现在只有内置的 Codex 插件用它（传成 `-c service_tier="…"`，`priority` 就是 Codex 应用里的 Fast），别的插件收下不理。`allow` 是 `access` 之外另外放行的操作，一条一条用那个 CLI 自己的写法，现在只有内置的 Claude Code 插件用它（每条传成一个 `--allowedTools=…`），别的插件收下不理。那六个都按「可能没有」来读，内置插件就是这么写的：`...(turn.model ? ["--model", turn.model] : [])`、`turn.command ?? []`。`read` 要能处理未写完的输出；CLI 真正完成后才返回 `text`。`read` 抛错或什么也不返回时，还在跑的接着跑，结束后这一轮算没跑成，留在原会话重派。
 
 支持 `resume` 的插件，从 Agent 收下提示词起都要返回 `started: true`，包括运行中和出错之后。否则干到一半断了，也会被当成会话接不上，开新会话把业务重做一遍。返回了 `session` 就要按 `turn.resume` 接回原会话：没跑成的重派和写错回执的重写都靠它；接不回去的 CLI 不要返回 `session`。
 
@@ -110,7 +110,7 @@ Claude 委托 Codex 的完整规则、Skill 和参数调用脚本见[浏览器�
 
 ## access 实际能做什么
 
-`access` 由插件翻译，不是中台提供的系统沙箱。以下是未额外放宽本机权限时的行为。
+`access` 由插件翻译，不是中台提供的系统沙箱。以下是未额外放宽本机权限时的行为。Claude Code 那一行说的「放行」，在 Agent 上写 `allow` 就行，不用改那台电脑上 Claude Code 自己的设置，见[配置手册](../skills/agent-autoloop/SKILL.md#接一个-agent)。
 
 | 插件             | `read`                                                           | `edit`                                                                       | `full`                                                 |
 | ---------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -120,9 +120,9 @@ Claude 委托 Codex 的完整规则、Skill 和参数调用脚本见[浏览器�
 | ZCode            | `plan`：只读规划，不写文件                                       | `edit`：自动应用编辑，shell 命令直接执行                                     | `yolo`：不审批，不受限制                               |
 | ACP              | Agent 来问时，同意读和搜索                                       | 再同意工作目录内的编辑                                                       | 同意它来问的所有操作                                   |
 
-Codex 的三个档位已用插件命令实跑；ZCode 已用真实 CLI 跑通 `edit` 模式、提问和回答后的会话续接，`plan`、`yolo` 按它的 `--mode` 说明整理；DeepSeek Harness 和 Claude Code 分别依据 [DSH 文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md)和[官方权限说明](https://code.claude.com/docs/en/permission-modes)整理，没有调用模型实跑。Codex 的命令网络限制与托管搜索、MCP 不是同一个边界，详见[官方沙箱说明](https://learn.chatgpt.com/docs/agent-approvals-security)。用户的 CLI 配置可能改变上述能力；`read` 也不代表读不到本机密钥。
+Codex 的三个档位已用插件命令实跑；ZCode 已用真实 CLI 跑通 `edit` 模式、提问和回答后的会话续接，`plan`、`yolo` 按它的 `--mode` 说明整理；DeepSeek Harness 和 Claude Code 分别依据 [DSH 文档](https://github.com/deepseek-ai/deepseek-harness/blob/master/apps/cli/reference/README.md)和[官方权限说明](https://code.claude.com/docs/en/permission-modes)整理，没有调用模型实跑；只有 Claude Code 的 `edit` 档连同 `allow` 用插件命令实跑过（2.1.322）：没放行的命令被拒，放行的那一条跑通。Codex 的命令网络限制与托管搜索、MCP 不是同一个边界，详见[官方沙箱说明](https://learn.chatgpt.com/docs/agent-approvals-security)。用户的 CLI 配置可能改变上述能力；`read` 也不代表读不到本机密钥。
 
-ACP 的 `access` 只管 Agent 主动来问的操作。规范允许 Agent 不询问就执行，这种操作 `access` 拦不住，要用 Agent 自己的模式限制，比如 `command` 里写 `env INITIAL_AGENT_MODE=read-only …`。ACP 的 `model`、`effort`、`tier` 不生效，也要在 Agent 自己那边设置。
+ACP 的 `access` 只管 Agent 主动来问的操作。规范允许 Agent 不询问就执行，这种操作 `access` 拦不住，要用 Agent 自己的模式限制，比如 `command` 里写 `env INITIAL_AGENT_MODE=read-only …`。ACP 的 `model`、`effort`、`tier`、`allow` 不生效，也要在 Agent 自己那边设置。
 
 场景模板据此选权限：早报用 `edit` 写本地文件，issue 用 `edit` 改代码并让固定脚本联网取正文，告警用 `read` 看代码和事件附带的调用栈。反馈处理、飞书摘要和邮件分诊用 `edit`，网站排查用 `read`；固定巡检、飞书读取和邮箱读取脚本负责联网，摘要与分诊 Agent 只读完整快照。`command` 和固定脚本以本机账号运行，不受 `access` 约束。
 

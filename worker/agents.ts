@@ -21,6 +21,8 @@ export type Turn = {
   /** The service tier to run at, in the agent program's own words; plugins whose program has none ignore it. */
   tier?: string;
   access: Access;
+  /** What it may do beyond its access, each in the agent program's own words; plugins whose program takes none ignore it. */
+  allow?: string[];
   command?: string[];
   /** The program a built-in plugin starts instead of the one it finds: a wrapper that sets things up and runs it. */
   program?: string;

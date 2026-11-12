@@ -1,4 +1,5 @@
-// Failure modes: explain prints a rule's private prompt; a dry run writes to the hub instead of previewing; the
+// Failure modes: explain prints a rule's private prompt, or gives an agent's access but not what its rules allow it beyond
+// that, so a draft that lets it run more reads as one that doesn't; a dry run writes to the hub instead of previewing; the
 // preview ignores another rule for the same event; a bad subcommand is accepted silently; a dry run with another source's key
 // previews this machine's source instead.
 import assert from "node:assert/strict";
@@ -47,6 +48,12 @@ test("explain lists rules, agents, channels and next runs, but no prompt or skil
     assert.ok(lines.includes(words), words + "\n" + lines);
   for (const privateText of ["按手册做。", "处理告警。", "记下来。", "写早报。"])
     assert.ok(!lines.includes(privateText), privateText);
+});
+
+test("explain says what an agent's rules allow it beyond its access", () => {
+  const agents = explainRules(fixture, at(0), "UTC").find((line) => line.startsWith("Agent："))!;
+  assert.match(agents, /a1（[^）]*权限 edit，另放行 Bash\(npm test \*\)/);
+  assert.ok(!/a2（[^）]*另放行/.test(agents), "nothing more for an agent whose rules allow none\n" + agents);
 });
 
 test("explain shows a rule's channels, and can read a draft file", async () => {

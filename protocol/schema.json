@@ -493,6 +493,12 @@
             "access": {
               "enum": ["read", "edit", "full"]
             },
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "command": {
               "type": "array",
               "items": {
