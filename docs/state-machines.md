@@ -10,7 +10,7 @@
 | 事项 | 没有单独状态列；`rule + lane` 对应的轮次、未结卡片、未来复查共同表达进展 | `enqueue/answer/tick/retryLater`；运行中来的事件排下一轮，失败时把同事项的队列合进重试轮次 |
 | 轮次 | `runs.state`: `queued → claimed → done/nothing/cancelled`；`claimed → unknown`；失败从 claimed/unknown 回 queued，`attempts/not_before` 表达等重试 | `claimNext/finish/applyReceipt/retryLater/cancel/stopRun/sweep`。unknown 不是失败，迟到结果照收，后续新活可以继续 |
 | 停止 | `claimed + cancel_at` 表示正在停；进程结束才 cancelled；排队可直接取消 | 本人 `cancel`，worker 停整个进程组后交结果；停止期间收到 failed 也归 cancelled，不能重派 |
-| 执行归属 | `agent/rules_version/issued/claim` 固定领取归属；`session/resume` 是续接提示；规则的 `resume` 写了轮数时，做完的轮次留着的 `resume` 还用来数这个事项连着接了几轮 | `assignQueued/settleSession/claimNext/started/finish`。排队用最新规则，领取后保留原 worker 和规则快照；重复 claim 换 token |
+| 执行归属 | `agent/rules_version/issued/claim` 固定领取归属；`session/resume` 是续接提示；规则的 `resume` 写了轮数时，做完的轮次留着的 `resume` 和 `session` 还用来顺着往回数一个会话跑了几轮 | `assignQueued/settleSession/claimNext/started/finish`。排队用最新规则，领取后保留原 worker 和规则快照；重复 claim 换 token |
 
 `done + open 提问`、`done + 未来复查` 都合法：只结束这一轮。连续失败最多 10 次，终态轮次不能重排。本人要再做用新事件或手动 `run`。已交回的 `last_issued/last_result/last_answer` 保证同 token 同内容重交只确认一次，不同内容返回 409。
 

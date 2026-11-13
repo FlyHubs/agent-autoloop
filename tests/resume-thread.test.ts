@@ -7,7 +7,9 @@
 // ten tries each, though the card said it would start over; a due check hands the previous agent's session to a new agent.
 // A rule that says how many rounds a session takes goes on in it past that many, so a session never ends however long it
 // grows; or tells the rounds by the session's name, which an agent may change each time it goes on, and never counts to
-// the end; or holds an answer to the count, so the answer starts over in a session that never heard the question.
+// the end; or holds an answer to the count, so the answer starts over in a session that never heard the question; or,
+// once answers have taken the thread back to a session that has had its rounds, lets the new events that follow go on
+// in it too, so it runs on past its count after all.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -355,5 +357,36 @@ test("an answer goes back to the session it was asked in, though that session ha
   assert.equal(answered.session, "S");
   it.act("finish", answered.run, answered.token, { outcome: "done", session: "S" });
   assert.equal(it.round("T").session, null, "the next event starts over");
+  it.check();
+});
+
+test("a new event doesn't go on in a session that has had its rounds, though an answer took the thread back to it", () => {
+  const it = hub(rulesWith(3));
+  const asked = (title: string) => {
+    it.message();
+    const asking = it.claim();
+    it.act("finish", asking.run, asking.token, {
+      outcome: "done",
+      session: "S",
+      ask: [{ title, text: "x", options: ["甲", "乙"] }],
+    });
+  };
+  const answered = (title: string) => {
+    it.act("answer", it.cards().find((card) => card.title === title)!.id, { choice: 0 });
+    const round = it.claim();
+    assert.equal(round.session, "S", "an answer goes back to where it was asked");
+    it.act("finish", round.run, round.token, { outcome: "done", session: "S" });
+  };
+  asked("先问的");
+  asked("后问的");
+  assert.equal(it.round("S").session, "S");
+  assert.equal(it.round("T").session, null, "S has had its three rounds");
+  answered("先问的");
+  assert.equal(it.round("U").session, null, "an answer soon after doesn't open S to new events again");
+  assert.equal(it.round("U").session, "U");
+  assert.equal(it.round("U").session, "U");
+  assert.equal(it.round("V").session, null);
+  answered("后问的");
+  assert.equal(it.round("W").session, null, "nor one that comes long after, when many rounds of others have run since");
   it.check();
 });

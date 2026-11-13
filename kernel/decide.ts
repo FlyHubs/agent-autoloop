@@ -126,14 +126,23 @@ function settleSession(draft: Draft, run: Row) {
   const carried = run.session ?? run.resume;
   let session = carried;
   if (!session && rule?.resume) {
-    // A rule may say how many rounds a session takes. The rounds are told by each having gone on from the one before, not
-    // by the session's name, which an agent may change as it goes on: when the thread's last ones make that many, this
-    // one starts anew. An answer or a due check carries its session and never gets here, so it still goes back to it.
-    const before = rule.resume === true ? null : rule.resume - 1;
-    const lately = rows(draft.view, "runs", { ...thread, state: ["done", "nothing", "cancelled"] }, before || 1, true);
+    // A rule may say how many rounds a session takes. A session's rounds are found by going back from the last round to
+    // the one whose session it went on in, and so on: not by the session's name, which an agent may change as it goes
+    // on, and not by the thread's last rounds, since an answer or a due check goes back to an older session among them.
+    // Those two carry their session and never get here, so they still go back to it; they count toward its rounds.
+    const most = rule.resume === true ? null : rule.resume;
+    const lately = rows(draft.view, "runs", { ...thread, state: ["done", "nothing", "cancelled"] }, most ?? 1, true);
     const [last] = lately;
-    const wentOn = lately.slice(0, before ?? 0);
-    const full = before !== null && wentOn.length === before && wentOn.every((each) => each.resume);
+    let had = 0;
+    for (let round: Row | undefined = last; most && round && had < most;) {
+      had++;
+      if (!round.resume) break;
+      const from: Row | undefined = lately.find((each) => each.id < round!.id && each.session === round!.resume);
+      // Gone on from a round further back than its count: rounds of another session have run since, so it is old.
+      if (!from) had = most;
+      round = from;
+    }
+    const full = most !== null && had >= most;
     if (last?.state !== "cancelled" && last?.agent === rule.to && !full) session = last.session;
   }
   if (!session) return;
